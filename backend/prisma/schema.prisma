@@ -1,0 +1,346 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(uuid())
+  firstName     String
+  lastName      String
+  phone         String         @unique
+  email         String?        @unique
+  password      String
+  role          UserRole       @default(CUSTOMER)
+  profilePhoto  String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  auditLogs     AuditLog[]
+  complaints    Complaint[]    @relation("CustomerComplaints")
+  driver        Driver?
+  messages      Message[]
+  notifications Notification[]
+  orders        Order[]        @relation("CustomerOrders")
+  refreshTokens RefreshToken[]
+}
+
+model Driver {
+  id            String           @id @default(uuid())
+  userId        String           @unique
+  vehicleType   String?
+  licenseNumber String?
+  isOnline      Boolean          @default(false)
+  currentLat    Float?
+  currentLng    Float?
+  rating        Float            @default(0.0)
+  approvedAt    DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  user          User             @relation(fields: [userId], references: [id])
+  earnings      DriverEarning[]
+  locations     DriverLocation[]
+  orders        Order[]          @relation("DriverOrders")
+}
+
+model Order {
+  id               String               @id @default(uuid())
+  customerId       String
+  driverId         String?
+  status           OrderStatus          @default(PENDING)
+  totalAmount      Float
+  deliveryFee      Float
+  commission       Float
+  pickupLocation   String
+  deliveryLocation String
+  pickupTime       DateTime?
+  deliveryTime     DateTime?
+  receiptImage     String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  chat             Chat?
+  earnings         DriverEarning[]
+  customer         User                 @relation("CustomerOrders", fields: [customerId], references: [id])
+  driver           Driver?              @relation("DriverOrders", fields: [driverId], references: [id])
+  statusHistory    OrderStatusHistory[]
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(uuid())
+  orderId   String
+  status    OrderStatus
+  timestamp DateTime    @default(now())
+  order     Order       @relation(fields: [orderId], references: [id])
+}
+
+model Chat {
+  id         String    @id @default(uuid())
+  orderId    String    @unique
+  customerId String
+  driverId   String
+  createdAt  DateTime  @default(now())
+  order      Order     @relation(fields: [orderId], references: [id])
+  messages   Message[]
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  chatId    String
+  senderId  String
+  text      String?
+  image     String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  chat      Chat     @relation(fields: [chatId], references: [id])
+  sender    User     @relation(fields: [senderId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  type      String
+  data      Json?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model DriverLocation {
+  id        String   @id @default(uuid())
+  driverId  String
+  lat       Float
+  lng       Float
+  timestamp DateTime @default(now())
+  driver    Driver   @relation(fields: [driverId], references: [id])
+}
+
+model DriverEarning {
+  id        String   @id @default(uuid())
+  driverId  String
+  orderId   String
+  amount    Float
+  createdAt DateTime @default(now())
+  driver    Driver   @relation(fields: [driverId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model OTPVerification {
+  id        String           @id @default(uuid())
+  phone     String
+  code      String
+  type      VerificationType
+  expiresAt DateTime
+  createdAt DateTime         @default(now())
+}
+
+model Setting {
+  id    String @id @default(uuid())
+  key   String @unique
+  value String
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  resource  String
+  meta      Json?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  image     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  icon      String?
+  sortOrder Int      @default(0)
+  stores    Store[]
+}
+
+model Store {
+  id              String          @id @default(uuid())
+  categoryId      String
+  name            String
+  logo            String?
+  banner          String?
+  address         String
+  phone           String
+  description     String?
+  openingHours    String?
+  isActive        Boolean         @default(true)
+  rating          Float           @default(0.0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deliveryFee     Float           @default(0.0)
+  isFeatured      Boolean         @default(false)
+  maxDeliveryTime Int             @default(45)
+  minDeliveryTime Int             @default(20)
+  latitude        Float?
+  longitude       Float?
+  minOrderAmount  Float           @default(0.0)
+  closingHours    String?
+  fans            FavoriteStore[]
+  offers          Offer[]
+  products        Product[]
+  category        Category        @relation(fields: [categoryId], references: [id])
+}
+
+model Product {
+  id                 String            @id @default(uuid())
+  storeId            String
+  name               String
+  description        String?
+  price              Float
+  image              String?
+  isActive           Boolean           @default(true)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  discountPercentage Float?
+  displayOrder       Int               @default(0)
+  isFeatured         Boolean           @default(false)
+  originalPrice      Float?
+  stockQuantity      Int?
+  cartItems          CartItem[]
+  fans               FavoriteProduct[]
+  store              Store             @relation(fields: [storeId], references: [id])
+  images             ProductImage[]
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  url       String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+model Banner {
+  id        String   @id @default(uuid())
+  title     String
+  imageUrl  String
+  targetUrl String?
+  isActive  Boolean  @default(true)
+  priority  Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  body      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model FavoriteStore {
+  id         String   @id @default(uuid())
+  customerId String
+  storeId    String
+  createdAt  DateTime @default(now())
+  store      Store    @relation(fields: [storeId], references: [id])
+
+  @@unique([customerId, storeId])
+}
+
+model FavoriteProduct {
+  id         String   @id @default(uuid())
+  customerId String
+  productId  String
+  createdAt  DateTime @default(now())
+  product    Product  @relation(fields: [productId], references: [id])
+
+  @@unique([customerId, productId])
+}
+
+model ShoppingCart {
+  id         String     @id @default(uuid())
+  customerId String     @unique
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  items      CartItem[]
+}
+
+model CartItem {
+  id        String       @id @default(uuid())
+  cartId    String
+  productId String
+  quantity  Int          @default(1)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  cart      ShoppingCart @relation(fields: [cartId], references: [id])
+  product   Product      @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId])
+}
+
+model Offer {
+  id              String   @id @default(uuid())
+  storeId         String
+  title           String
+  description     String?
+  bannerImage     String
+  startDate       DateTime
+  endDate         DateTime
+  isActive        Boolean  @default(true)
+  displayPriority Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  store           Store    @relation(fields: [storeId], references: [id])
+}
+
+model Complaint {
+  id         String          @id @default(uuid())
+  customerId String
+  orderId    String?
+  subject    String
+  body       String
+  status     ComplaintStatus @default(OPEN)
+  reply      String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  customer   User            @relation("CustomerComplaints", fields: [customerId], references: [id])
+}
+
+enum UserRole {
+  CUSTOMER
+  DRIVER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PICKED_UP
+  DELIVERED
+  CANCELLED
+}
+
+enum VerificationType {
+  REGISTER
+  FORGOT_PASSWORD
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}

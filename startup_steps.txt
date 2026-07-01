@@ -1,0 +1,31 @@
+Project Startup Steps
+=====================
+
+Date: 2026-06-30
+
+Here are the step-by-step actions taken to get the entire project running:
+
+1. **Started the NestJS Backend**
+   - Navigated to the `backend` directory.
+   - Executed the `npm run dev` command.
+   - This killed any existing process on port 3000 and started the backend API in watch mode.
+   - Backend URL: http://localhost:3000/api/v1
+   - Swagger Documentation: http://localhost:3000/docs
+
+2. **Started Prisma Studio**
+   - Navigated to the `backend` directory.
+   - Executed the `npx prisma studio` command.
+   - This loaded the database schema and started the visual database editor.
+   - Prisma Studio URL: http://localhost:5555
+
+3. **Fixed Admin Dashboard Import Bug**
+   - Attempted to run the `admin_dashboard` Flutter web app.
+   - Encountered a fast-fail compile error: `Error: 'extractApiErrorMessage' is imported from both 'package:admin_dashboard/core/network/api_client.dart' and 'package:admin_dashboard/core/network/api_error.dart'`.
+   - Opened `admin_dashboard/lib/features/auth/auth_provider.dart`.
+   - Modified line 2 to hide the duplicate helper function from the first import:
+     `import '../../core/network/api_client.dart' hide extractApiErrorMessage;`
+
+4. **Started the Admin Dashboard**
+   - Navigated to the `admin_dashboard` directory.
+   - Executed the `flutter run -d chrome` command.
+   - The project successfully performed package resolution, compiled, and dispatched a Chrome instance for debugging.
