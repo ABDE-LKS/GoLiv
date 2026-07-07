@@ -1,76 +1,90 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
+import { ReportStatus } from '@prisma/client';
 
 @Injectable()
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getSummary() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  // =====================================
+  // USER CONTENT REPORTING (MARKETPLACE)
+  // =====================================
+  async createReport(userId: string, dto: { adId?: string; reportedUserId?: string; reason: string }) {
+    if (!dto.adId && !dto.reportedUserId) {
+      throw new NotFoundException('Must provide either adId or reportedUserId');
+    }
 
-    const [
-      totalOrders,
-      deliveredOrders,
-      totalRevenue,
-      totalCommission,
-      totalCustomers,
-      totalDrivers,
-      totalStores,
-      openComplaints,
-    ] = await Promise.all([
-      this.prisma.order.count(),
-      this.prisma.order.count({ where: { status: 'DELIVERED' } }),
-      this.prisma.order.aggregate({ _sum: { totalAmount: true }, where: { status: 'DELIVERED' } }),
-      this.prisma.order.aggregate({ _sum: { commission: true }, where: { status: 'DELIVERED' } }),
-      this.prisma.user.count({ where: { role: 'CUSTOMER' } }),
-      this.prisma.driver.count(),
-      this.prisma.store.count(),
-      this.prisma.complaint.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
-    ]);
-
-    const monthlyOrders = await this.prisma.order.findMany({
-      where: { createdAt: { gte: firstDayOfMonth } },
-      select: { createdAt: true, totalAmount: true, status: true },
+    return this.prisma.report.create({
+      data: {
+        userId,
+        adId: dto.adId,
+        reportedUserId: dto.reportedUserId,
+        reason: dto.reason,
+        status: ReportStatus.PENDING,
+      },
     });
-
-    return {
-      orders: { total: totalOrders, delivered: deliveredOrders },
-      revenue: { total: totalRevenue._sum.totalAmount || 0, commission: totalCommission._sum.commission || 0 },
-      users: { customers: totalCustomers, drivers: totalDrivers },
-      stores: totalStores,
-      complaints: openComplaints,
-      monthlyOrders,
-    };
   }
 
-  async exportOrdersCsv() {
-    const orders = await this.prisma.order.findMany({
+  async getReportsList(status?: ReportStatus) {
+    return this.prisma.report.findMany({
+      where: status ? { status } : undefined,
       include: {
-        customer: { select: { firstName: true, lastName: true, phone: true } },
-        driver: { include: { user: { select: { firstName: true, lastName: true } } } },
+        user: { select: { id: true, firstName: true } },
+        ad: { select: { id: true, title: true } },
+        reportedUser: { select: { id: true, firstName: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
 
-    const header = 'ID,Date,Status,Customer,Phone,Driver,Total,DeliveryFee,Commission\n';
-    const rows = orders.map((o) => {
-      const customer = `${o.customer.firstName} ${o.customer.lastName}`;
-      const driver = o.driver ? `${o.driver.user.firstName} ${o.driver.user.lastName}` : '';
-      return [
-        o.id,
-        o.createdAt.toISOString(),
-        o.status,
-        customer,
-        o.customer.phone,
-        driver,
-        o.totalAmount,
-        o.deliveryFee,
-        o.commission,
-      ].join(',');
+  async updateReportStatus(reportId: string, status: ReportStatus) {
+    return this.prisma.report.update({
+      where: { id: reportId },
+      data: { status },
+    });
+  }
+
+  // =====================================
+  // ADMIN DASHBOARD STATS (MARKETPLACE)
+  // =====================================
+  async getSummary() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [
+      totalUsers,
+      totalAds,
+      totalCategories,
+      dailyRegistrations,
+      reportedAds,
+      reportedUsersCount,
+    ] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.advertisement.count(),
+      this.prisma.category.count(),
+      this.prisma.user.count({ where: { createdAt: { gte: today } } }),
+      this.prisma.report.count({ where: { adId: { not: null }, status: 'PENDING' } }),
+      this.prisma.report.count({ where: { reportedUserId: { not: null }, status: 'PENDING' } }),
+    ]);
+
+    const popularCategories = await this.prisma.advertisement.groupBy({
+      by: ['categoryId'],
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: 5,
     });
 
-    return header + rows.join('\n');
+    const mostViewedAds = await this.prisma.advertisement.findMany({
+      take: 5,
+      orderBy: { viewsCount: 'desc' },
+      select: { id: true, title: true, viewsCount: true },
+    });
+
+    return {
+      users: { total: totalUsers, active: totalUsers, dailyRegistrations },
+      content: { advertisements: totalAds, categories: totalCategories },
+      moderation: { pendingReportedAds: reportedAds, pendingReportedUsers: reportedUsersCount },
+      analytics: { popularCategories, mostViewedAds },
+    };
   }
 }

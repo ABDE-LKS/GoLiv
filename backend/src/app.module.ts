@@ -23,6 +23,9 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AdminsModule } from './modules/admins/admins.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { AdvertisementsModule } from './modules/advertisements/advertisements.module';
+import { ConversationsModule } from './modules/conversations/conversations.module';
+import { FavoritesModule } from './modules/favorites/favorites.module';
 
 @Module({
   imports: [
@@ -52,6 +55,9 @@ import { ReportsModule } from './modules/reports/reports.module';
     AuditModule,
     AdminsModule,
     ReportsModule,
+    AdvertisementsModule,
+    ConversationsModule,
+    FavoritesModule,
   ],
 })
 export class AppModule {}

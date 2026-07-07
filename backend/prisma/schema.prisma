@@ -25,6 +25,15 @@ model User {
   notifications Notification[]
   orders        Order[]        @relation("CustomerOrders")
   refreshTokens RefreshToken[]
+
+  // Marketplace Relations
+  ads                   Advertisement[]       @relation("SellerAds")
+  favorites             Favorite[]            @relation("UserFavorites")
+  conversationsAsBuyer  Conversation[]        @relation("BuyerConversations")
+  conversationsAsSeller Conversation[]        @relation("SellerConversations")
+  reportsSubmitted      Report[]              @relation("UserReports")
+  reportsReceived       Report[]              @relation("ReportedUsers")
+  conversationMessages  ConversationMessage[]
 }
 
 model Driver {
@@ -163,15 +172,16 @@ model AuditLog {
 }
 
 model Category {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  image     String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  icon      String?
-  sortOrder Int      @default(0)
-  stores    Store[]
+  id             String          @id @default(uuid())
+  name           String          @unique
+  image          String?
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  icon           String?
+  sortOrder      Int             @default(0)
+  stores         Store[]
+  advertisements Advertisement[]
 }
 
 model Store {
@@ -343,4 +353,112 @@ enum ComplaintStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
+}
+
+// ==========================================
+// MARKETPLACE ENTITIES 
+// ==========================================
+
+model Advertisement {
+  id          String        @id @default(uuid())
+  sellerId    String
+  categoryId  String
+  title       String
+  description String
+  price       Float
+  negotiable    Boolean       @default(false)
+  condition     ItemCondition @default(used_good)
+  location      String
+  status        AdStatus      @default(ACTIVE)
+  viewsCount    Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  seller        User                 @relation("SellerAds", fields: [sellerId], references: [id])
+  category      Category             @relation(fields: [categoryId], references: [id])
+  images        AdvertisementImage[]
+  favorites     Favorite[]
+  conversations Conversation[]
+  reports       Report[]
+}
+
+model AdvertisementImage {
+  id        String        @id @default(uuid())
+  adId      String
+  url       String
+  createdAt DateTime      @default(now())
+  ad        Advertisement @relation(fields: [adId], references: [id])
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  adId      String
+  buyerId   String
+  sellerId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ad       Advertisement         @relation(fields: [adId], references: [id])
+  buyer    User                  @relation("BuyerConversations", fields: [buyerId], references: [id])
+  seller   User                  @relation("SellerConversations", fields: [sellerId], references: [id])
+  messages ConversationMessage[]
+}
+
+model ConversationMessage {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderId       String
+  text           String?
+  image          String?
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  sender       User         @relation(fields: [senderId], references: [id])
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  adId      String
+  createdAt DateTime @default(now())
+
+  user User          @relation("UserFavorites", fields: [userId], references: [id])
+  ad   Advertisement @relation(fields: [adId], references: [id])
+
+  @@unique([userId, adId])
+}
+
+model Report {
+  id             String       @id @default(uuid())
+  userId         String
+  adId           String?
+  reportedUserId String?
+  reason         String
+  status         ReportStatus @default(PENDING)
+  createdAt      DateTime     @default(now())
+
+  user         User           @relation("UserReports", fields: [userId], references: [id])
+  ad           Advertisement? @relation(fields: [adId], references: [id])
+  reportedUser User?          @relation("ReportedUsers", fields: [reportedUserId], references: [id])
+}
+
+enum ItemCondition {
+  new_condition
+  used_like_new
+  used_good
+  used_fair
+}
+
+enum AdStatus {
+  ACTIVE
+  SOLD
+  HIDDEN
+  DELETED
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
 }

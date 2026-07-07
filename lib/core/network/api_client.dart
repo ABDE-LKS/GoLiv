@@ -42,11 +42,18 @@ class ApiClient {
         return handler.next(response);
       },
       onError: (DioException e, handler) async {
-        if (e.response?.statusCode == 401 && e.requestOptions.path != '/auth/login') {
+        if (e.response?.statusCode == 401 && 
+            e.requestOptions.path != '/auth/login' && 
+            e.requestOptions.path != '/auth/refresh') {
           final refreshed = await _tryRefreshToken();
           if (refreshed) {
             try {
-              final retry = await dio.fetch(e.requestOptions);
+              final options = e.requestOptions;
+              final token = await storage.read(key: 'access_token');
+              if (token != null) {
+                options.headers['Authorization'] = 'Bearer $token';
+              }
+              final retry = await dio.fetch(options);
               return handler.resolve(retry);
             } catch (_) {}
           }

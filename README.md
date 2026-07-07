@@ -1,4 +1,4 @@
-flutter run --dart-define=API_HOST=192.168.1.22
+flutter run --dart-define=API_HOST=192.168.1.11
 --
 
 

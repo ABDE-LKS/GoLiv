@@ -4,6 +4,10 @@ import 'package:wassali/core/theme/color_tokens.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wassali/features/auth/auth_state.dart';
 
+import 'package:wassali/features/customer/favorites/presentation/screens/favorites_screen.dart';
+import 'package:wassali/features/customer/advertisements/presentation/screens/user_ads_screen.dart';
+import 'package:wassali/features/customer/chat/conversations_list_screen.dart';
+
 class ProfileTabScreen extends ConsumerWidget {
   const ProfileTabScreen({super.key});
 
@@ -136,8 +140,9 @@ class ProfileTabScreen extends ConsumerWidget {
             const SizedBox(height: 32),
             _buildActionGroup(context, [
               _ProfileAction(Icons.person_outline_rounded, 'المعلومات الشخصية', () => _showPersonalInfo(context, auth)),
-              _ProfileAction(Icons.location_on_outlined, 'عناوين التوصيل', () => _showAddresses(context)),
-              _ProfileAction(Icons.history_rounded, 'سجل الطلبات', () => context.push('/customer/orders')),
+              _ProfileAction(Icons.inventory_2_outlined, 'إعلاناتي', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserAdsScreen()))),
+              _ProfileAction(Icons.favorite_border_rounded, 'الإعلانات المحفوظة', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen()))),
+              _ProfileAction(Icons.chat_bubble_outline_rounded, 'المحادثات', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ConversationsListScreen()))),
             ]),
             const SizedBox(height: 24),
             _buildActionGroup(context, [
@@ -148,12 +153,12 @@ class ProfileTabScreen extends ConsumerWidget {
             const SizedBox(height: 24),
             _buildActionGroup(context, [
               _ProfileAction(Icons.help_outline_rounded, 'مركز المساعدة', () => _showSupport(context)),
-              _ProfileAction(Icons.info_outline_rounded, 'حول وصّلي', () => showAboutDialog(
+              _ProfileAction(Icons.info_outline_rounded, 'حول سوق القرارة', () => showAboutDialog(
                 context: context,
-                applicationName: 'وصّلي',
+                applicationName: 'سوق القرارة',
                 applicationVersion: '1.0.0',
-                applicationIcon: const Icon(Icons.delivery_dining, size: 50, color: ColorTokens.primary),
-                children: const [Text('تطبيق التوصيل المحلي الأول في الجزائر، نوصلك كل ما تحتاجه إلى باب بيتك.')],
+                applicationIcon: const Icon(Icons.storefront_rounded, size: 50, color: ColorTokens.primary),
+                children: const [Text('السوق المحلي الأول في القرارة. بع واشتر بكل سهولة وأمان.')],
               )),
             ]),
             const SizedBox(height: 32),

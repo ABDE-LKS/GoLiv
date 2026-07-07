@@ -29,6 +29,9 @@ dependencies:
   pretty_dio_logger: ^1.4.0
   connectivity_plus: ^6.0.3
   cached_network_image: ^3.4.1
+  image_picker: ^1.1.2
+  url_launcher: ^6.3.0
+  share_plus: ^12.0.2
 
 dev_dependencies:
   flutter_test:

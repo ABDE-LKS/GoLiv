@@ -6,7 +6,7 @@ export class HomeService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getAggregatedFeed() {
-    const [banners, announcements, categories, featuredOffers, featuredStores, featuredProducts] = await Promise.all([
+    const [banners, announcements, categories, featuredOffers, featuredStores, featuredProducts, featuredAdvertisements] = await Promise.all([
       // Top Banners
       this.prisma.banner.findMany({
         where: { isActive: true },
@@ -35,16 +35,27 @@ export class HomeService {
         include: { store: true },
         take: 10,
       }),
-      // Featured Stores (replaces Favorites section based on priority)
+      // Featured Stores
       this.prisma.store.findMany({
         where: { isActive: true, isFeatured: true },
         orderBy: { rating: 'desc' },
         take: 10,
       }),
-      // Featured Products Grid
+      // Featured Products (Delivery)
       this.prisma.product.findMany({
         where: { isActive: true, isFeatured: true },
         include: { store: true },
+        take: 10,
+      }),
+      // Featured Advertisements (Marketplace)
+      this.prisma.advertisement.findMany({
+        where: { status: 'ACTIVE' },
+        orderBy: { createdAt: 'desc' },
+        include: { 
+          images: true,
+          seller: { select: { id: true, firstName: true, lastName: true, phone: true } },
+          category: true 
+        },
         take: 10,
       })
     ]);
@@ -56,6 +67,7 @@ export class HomeService {
       offers: featuredOffers,
       featuredStores,
       featuredProducts,
+      featuredAdvertisements,
     };
   }
 }

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wassali/core/theme/color_tokens.dart';
 import 'home_tab_screen.dart';
-import '../../../orders/presentation/screens/orders_history_screen.dart';
 import '../../../profile/presentation/screens/profile_tab_screen.dart';
-import '../../../store/presentation/screens/stores_list_screen.dart';
+import '../../../advertisements/presentation/screens/search_ads_screen.dart';
+import '../../../advertisements/presentation/screens/create_ad_screen.dart';
+import '../../../chat/conversations_list_screen.dart';
+import 'package:wassali/shared/presentation/screens/coming_soon_screen.dart';
 
 class MainHomeScreen extends StatefulWidget {
   const MainHomeScreen({super.key});
@@ -18,8 +20,9 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
 
   final List<Widget> _screens = [
     const HomeTabScreen(),
-    const StoresListScreen(),
-    const OrdersHistoryScreen(),
+    const SearchAdsScreen(), // Real Search Screen
+    const CreateAdScreen(), // Real Sell Screen
+    const ConversationsListScreen(), // Real Chat List Screen
     const ProfileTabScreen(),
   ];
 
@@ -30,11 +33,22 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         index: _currentIndex,
         children: _screens,
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // You can either switch tab or push a new screen. 
+          // Requirements imply it's a primary action.
+          setState(() => _currentIndex = 2);
+        },
+        backgroundColor: ColorTokens.secondary,
+        elevation: 4,
+        child: const Icon(Icons.add_rounded, size: 32, color: Colors.white),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -51,8 +65,8 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
             unselectedItemColor: ColorTokens.textMuted,
             showSelectedLabels: true,
             showUnselectedLabels: true,
-            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 12),
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 11),
             items: const [
               BottomNavigationBarItem(
                 icon: Icon(Icons.home_filled),
@@ -60,14 +74,18 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                 label: 'الرئيسية',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.storefront_outlined),
-                activeIcon: Icon(Icons.storefront_rounded),
-                label: 'المتاجر',
+                icon: Icon(Icons.search_rounded),
+                activeIcon: Icon(Icons.search_rounded),
+                label: 'بحث',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.receipt_long_outlined),
-                activeIcon: Icon(Icons.receipt_long_rounded),
-                label: 'طلباتي',
+                icon: Icon(Icons.add, color: Colors.transparent), // Hidden for FAB
+                label: 'بيع',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.chat_bubble_outline_rounded),
+                activeIcon: Icon(Icons.chat_bubble_rounded),
+                label: 'المحادثات',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.person_outline_rounded),
