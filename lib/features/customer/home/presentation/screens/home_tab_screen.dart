@@ -4,9 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:wassali/core/theme/color_tokens.dart';
 import '../../home_provider.dart';
 import 'package:wassali/features/auth/auth_state.dart';
-
 import 'package:wassali/models/advertisement_model.dart';
 import 'package:wassali/features/customer/advertisements/presentation/screens/ad_details_screen.dart';
+import 'package:wassali/features/customer/services/presentation/screens/services_list_screen.dart';
+import 'package:wassali/features/customer/jobs/presentation/screens/jobs_list_screen.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class HomeTabScreen extends ConsumerWidget {
   const HomeTabScreen({super.key});
@@ -15,155 +18,22 @@ class HomeTabScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final homeDataAsync = ref.watch(homeProvider);
     final authState = ref.watch(authNotifierProvider);
-    final customerName = authState.name ?? 'ضيف';
 
     return Scaffold(
-      backgroundColor: ColorTokens.background,
+      backgroundColor: const Color(0xFFF9FAFB),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(homeProvider);
-          },
+          onRefresh: () async => ref.invalidate(homeProvider),
           child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
             slivers: [
-              // 1. Marketplace Header
-              SliverPadding(
-                padding: const EdgeInsets.all(20),
-                sliver: SliverToBoxAdapter(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'سوق القرارة',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              fontFamily: 'Inter',
-                              color: ColorTokens.primary,
-                              fontSize: 28,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(Icons.location_on, color: ColorTokens.textSecondary, size: 16),
-                              const SizedBox(width: 4),
-                              Text(
-                                'تبحث في القرارة وما حولها',
-                                style: TextStyle(color: ColorTokens.textSecondary, fontWeight: FontWeight.w600, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: ColorTokens.surface,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
-                          ],
-                        ),
-                        child: IconButton(
-                          icon: const Icon(Icons.notifications_outlined),
-                          color: ColorTokens.textPrimary,
-                          onPressed: () => context.push('/customer/notifications'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // 2. Search Bar
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverToBoxAdapter(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: ColorTokens.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
-                      ],
-                    ),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'ابحث عن سيارات، هواتف، عقارات...',
-                        hintStyle: TextStyle(color: ColorTokens.textSecondary.withOpacity(0.5)),
-                        prefixIcon: const Icon(Icons.search, color: ColorTokens.primary),
-                        suffixIcon: const Icon(Icons.tune_rounded, color: ColorTokens.textMuted),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      readOnly: true,
-                      onTap: () => context.push('/customer/search'),
-                    ),
-                  ),
-                ),
-              ),
-
-              // Dynamic Home Data
+              _buildHeader(context, authState),
+              _buildSearchBar(context),
+              _buildHeroShortcuts(context),
               homeDataAsync.when(
-                loading: () => const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (error, stack) => SliverFillRemaining(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.wifi_off_rounded, size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text('تعذر تحميل الإعلانات', style: TextStyle(color: ColorTokens.textSecondary)),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => ref.invalidate(homeProvider),
-                          child: const Text('إعادة المحاولة'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                data: (data) {
-                  final categories = data['categories'] as List? ?? [];
-                  final announcements = data['announcements'] as List? ?? [];
-                  // Map raw featuredAdvertisements to Advertisement models
-                  final latestAdsRaw = data['featuredAdvertisements'] as List? ?? [];
-                  final latestAds = latestAdsRaw.map((e) => AdvertisementModel.fromJson(Map<String, dynamic>.from(e))).toList();
-
-                  return SliverList(
-                    delegate: SliverChildListDelegate([
-                      if (announcements.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        _buildAnnouncements(announcements),
-                      ],
-                      const SizedBox(height: 24),
-
-                      // Categories
-                      if (categories.isNotEmpty) ...[
-                        _buildSectionTitle('تصفح الأقسام'),
-                        _buildCategoriesList(categories),
-                        const SizedBox(height: 24),
-                      ],
-
-                      // Quick Filters
-                      _buildQuickFilters(),
-                      const SizedBox(height: 24),
-
-                      // Latest Ads Grid
-                      _buildSectionTitle('أحدث الإعلانات'),
-                      if (latestAds.isEmpty)
-                        _buildEmptyState()
-                      else
-                        _buildMarketplaceGrid(context, latestAds),
-                      
-                      const SizedBox(height: 80), // Padding for BottomNavBar and FAB
-                    ]),
-                  );
-                },
+                loading: () => _buildLoadingState(),
+                error: (e, _) => _buildErrorState(ref),
+                data: (data) => _buildContent(context, data),
               ),
             ],
           ),
@@ -172,36 +42,133 @@ class HomeTabScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Inter',
+  Widget _buildHeader(BuildContext context, AuthState auth) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+      sliver: SliverToBoxAdapter(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'سوق القرارة',
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: ColorTokens.primary, letterSpacing: -0.5),
+                ).animate().fadeIn().slideX(begin: -0.2),
+                const SizedBox(height: 4),
+                const Row(
+                  children: [
+                    Icon(Icons.location_on_rounded, color: ColorTokens.textMuted, size: 14),
+                    SizedBox(width: 4),
+                    Text('القرارة، الجزائر', style: TextStyle(color: ColorTokens.textMuted, fontWeight: FontWeight.w600, fontSize: 12)),
+                  ],
+                ),
+              ],
             ),
-          ),
-          Text(
-            'عرض الكل',
-            style: TextStyle(
-              color: ColorTokens.primary,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
-        ],
+            _buildNotificationBadge(context),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildCategoriesList(List categories) {
+  Widget _buildNotificationBadge(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: IconButton(
+        icon: const Icon(Icons.notifications_none_rounded, color: ColorTokens.textPrimary),
+        onPressed: () => context.push('/customer/notifications'),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(BuildContext context) {
+    return SliverPadding(
+      padding: const EdgeInsets.all(20),
+      sliver: SliverToBoxAdapter(
+        child: GestureDetector(
+          onTap: () => context.push('/customer/search'),
+          child: Container(
+            height: 56,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 10))],
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.search_rounded, color: ColorTokens.primary),
+                SizedBox(width: 12),
+                Text('ابحث عن أي شيء تحتاجه...', style: TextStyle(color: ColorTokens.textMuted, fontSize: 14)),
+                Spacer(),
+                Icon(Icons.tune_rounded, color: ColorTokens.textMuted, size: 20),
+              ],
+            ),
+          ),
+        ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2),
+      ),
+    );
+  }
+
+  Widget _buildHeroShortcuts(BuildContext context) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      sliver: SliverToBoxAdapter(
+        child: Row(
+          children: [
+            Expanded(
+              child: _ShortcutCard(
+                title: 'دليل الخدمات',
+                subtitle: 'حرفيين ومهنيين',
+                icon: Icons.handyman_rounded,
+                color: const Color(0xFF6366F1), // Indigo
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ServicesListScreen())),
+              ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.2),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _ShortcutCard(
+                title: 'فرص العمل',
+                subtitle: 'ابحث عن وظيفة',
+                icon: Icons.work_rounded,
+                color: const Color(0xFF10B981), // Emerald Green
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const JobsListScreen())),
+              ).animate().fadeIn(delay: 400.ms).slideX(begin: 0.2),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, Map<String, dynamic> data) {
+    final categories = data['categories'] as List? ?? [];
+    final latestAdsRaw = data['featuredAdvertisements'] as List? ?? [];
+    final ads = latestAdsRaw.map((e) => AdvertisementModel.fromJson(Map<String, dynamic>.from(e))).toList();
+
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        if (categories.isNotEmpty) ...[
+          _buildSectionHeader('الأقسام'),
+          _buildCategories(categories),
+          const SizedBox(height: 24),
+        ],
+        _buildSectionHeader('أحدث الإعلانات'),
+        if (ads.isEmpty) _buildEmptyState() else _buildAdsGrid(context, ads),
+        const SizedBox(height: 100),
+      ]),
+    );
+  }
+
+  Widget _buildCategories(List categories) {
     return SizedBox(
-      height: 90,
+      height: 100,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
@@ -209,225 +176,184 @@ class HomeTabScreen extends ConsumerWidget {
         itemBuilder: (context, index) {
           final cat = categories[index];
           return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 8),
+            width: 80,
+            margin: const EdgeInsets.symmetric(horizontal: 6),
             child: Column(
               children: [
                 Container(
-                  width: 54,
-                  height: 54,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
-                    color: ColorTokens.surface,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2)),
-                    ],
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
                   ),
-                  child: cat['image'] != null
-                      ? ClipOval(child: Image.network(cat['image'], fit: BoxFit.cover))
-                      : Icon(Icons.category_rounded, color: ColorTokens.primary, size: 24),
+                  child: Center(
+                    child: cat['image'] != null
+                        ? ClipRRect(borderRadius: BorderRadius.circular(16), child: CachedNetworkImage(imageUrl: cat['image'], width: 40, height: 40, fit: BoxFit.cover))
+                        : const Icon(Icons.category_rounded, color: ColorTokens.primary),
+                  ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  cat['name'],
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                ),
+                Text(cat['name'], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold), textAlign: TextAlign.center, maxLines: 1),
               ],
             ),
-          );
+          ).animate().fadeIn(delay: (index * 50).ms).scale();
         },
       ),
     );
   }
 
-  Widget _buildQuickFilters() {
-    final filters = ['الأقرب إليك', 'أقل سعر', 'للمقايضة فقط', 'مستعمل', 'جديد'];
-    return SizedBox(
-      height: 38,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: filters.length,
-        itemBuilder: (context, index) {
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: index == 0 ? ColorTokens.secondary : ColorTokens.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: index == 0 ? Colors.transparent : Colors.grey.withOpacity(0.2)),
-            ),
-            child: Center(
-              child: Text(
-                filters[index],
-                style: TextStyle(
-                  color: index == 0 ? Colors.white : ColorTokens.textPrimary,
-                  fontSize: 13,
-                  fontWeight: index == 0 ? FontWeight.bold : FontWeight.w500,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildMarketplaceGrid(BuildContext context, List<AdvertisementModel> products) {
+  Widget _buildAdsGrid(BuildContext context, List<AdvertisementModel> ads) {
     return GridView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
       padding: const EdgeInsets.symmetric(horizontal: 20),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 0.68,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),
-      itemCount: products.length,
-      itemBuilder: (context, index) {
-        final ad = products[index];
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AdDetailsScreen(ad: ad),
-              ),
-            );
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: ColorTokens.surface,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Image
-                Expanded(
-                  flex: 5,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      image: ad.images.isNotEmpty
-                          ? DecorationImage(image: NetworkImage(ad.images.first), fit: BoxFit.cover)
-                          : null,
-                    ),
-                    child: Stack(
-                      children: [
-                        if (ad.images.isEmpty)
-                          const Center(child: Icon(Icons.image_outlined, color: Colors.grey, size: 40)),
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                            child: Icon(
-                              ad.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                              size: 18,
-                              color: ad.isFavorite ? Colors.red : Colors.grey,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Ad Content
-                Expanded(
-                  flex: 4,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${ad.price.toStringAsFixed(0)} دج',
-                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: ColorTokens.primary),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          ad.title,
-                          style: TextStyle(fontSize: 13, color: ColorTokens.textPrimary, fontWeight: FontWeight.bold),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const Spacer(),
-                        Row(
-                          children: [
-                            const Icon(Icons.location_on, size: 12, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Expanded(child: Text(ad.location, style: const TextStyle(fontSize: 11, color: Colors.grey, overflow: TextOverflow.ellipsis))),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text('اليوم', style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      itemCount: ads.length,
+      itemBuilder: (context, index) => _AdCard(ad: ads[index]).animate().fadeIn(delay: (index * 100).ms).slideY(begin: 0.1),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: ColorTokens.textPrimary)),
+          TextButton(onPressed: () {}, child: const Text('عرض الكل', style: TextStyle(color: ColorTokens.primary, fontWeight: FontWeight.bold))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() => const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
+  Widget _buildErrorState(WidgetRef ref) => SliverFillRemaining(child: Center(child: TextButton(onPressed: () => ref.invalidate(homeProvider), child: const Text('خطأ في التحميل، حاول مجدداً'))));
+  Widget _buildEmptyState() => const Center(child: Text('لا توجد إعلانات متاحة حالياً'));
+}
+
+class _AdCard extends StatelessWidget {
+  final AdvertisementModel ad;
+  const _AdCard({required this.ad});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad))),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5))],
+        ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.inbox_rounded, size: 80, color: Colors.grey[300]),
-            const SizedBox(height: 16),
-            const Text('لم يتم العثور على أية إعلانات.', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey)),
-            const SizedBox(height: 8),
-            const Text('كن أول من يضيف إعلاناً في مدينتك!', style: TextStyle(color: Colors.grey, fontSize: 13)),
+            Expanded(
+              flex: 11,
+              child: Stack(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: const BorderRadius.vertical(top: Radius.circular(20))),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                      child: ad.images.isNotEmpty
+                          ? CachedNetworkImage(imageUrl: ad.images.first, fit: BoxFit.cover)
+                          : const Icon(Icons.image_outlined, color: Colors.grey, size: 40),
+                    ),
+                  ),
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), shape: BoxShape.circle),
+                      child: Icon(ad.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded, size: 16, color: ad.isFavorite ? Colors.red : Colors.black45),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 9,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${ad.price.toStringAsFixed(0)} دج', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: ColorTokens.primary)),
+                    const SizedBox(height: 4),
+                    Text(ad.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_rounded, size: 12, color: ColorTokens.textMuted),
+                        const SizedBox(width: 4),
+                        Expanded(child: Text(ad.location, style: const TextStyle(fontSize: 11, color: ColorTokens.textMuted, overflow: TextOverflow.ellipsis))),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildAnnouncements(List announcements) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: announcements.map((a) {
-          return Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: ColorTokens.secondary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: ColorTokens.secondary.withOpacity(0.2)),
+class _ShortcutCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ShortcutCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 100,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 8))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.campaign_outlined, color: ColorTokens.secondary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(a['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      if (a['body'] != null)
-                        Text(a['body'], style: const TextStyle(fontSize: 12, color: ColorTokens.textMuted)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
+            const Spacer(),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: ColorTokens.textPrimary)),
+            Text(subtitle, style: const TextStyle(fontSize: 10, color: ColorTokens.textMuted, fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
     );
   }

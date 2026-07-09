@@ -16,7 +16,18 @@ async function bootstrap() {
 
   // Security
   // app.use(helmet()); // Temporarily disabled to debug connection issues
-  app.enableCors();
+  // Allow requests from the web frontend (port 3001) and mobile/Swagger
+  app.enableCors({
+    origin: [
+      'http://localhost:3001', // Next.js web app
+      'http://localhost:3000', // Swagger / Prisma Studio
+      'http://127.0.0.1:3001',
+      'http://10.0.2.2:3001',  // Android emulator
+    ],
+    credentials: true,          // Enable cookies & Authorization header
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  });
 
   // Global Response & Logging Interceptors
   app.useGlobalInterceptors(new RequestLoggingInterceptor());

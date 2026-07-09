@@ -18,7 +18,7 @@ class NotificationRepositoryImpl implements INotificationRepository {
   @override
   Future<List<NotificationModel>> getNotifications() async {
     try {
-      final response = await _apiClient.dio.get('/notifications');
+      final response = await _apiClient.dio.get('/notifications/my');
       final List data = response.data;
       return data.map((e) => NotificationModel.fromJson(e)).toList();
     } on DioException catch (e) {
@@ -29,7 +29,7 @@ class NotificationRepositoryImpl implements INotificationRepository {
   @override
   Future<void> markAsRead(String id) async {
     try {
-      await _apiClient.dio.patch('/notifications/$id/read');
+      await _apiClient.dio.patch('/notifications/my/$id/read');
     } on DioException catch (e) {
       throw e.error ?? ApiException(message: 'فشل في تحديث التنبيه');
     }
@@ -38,7 +38,7 @@ class NotificationRepositoryImpl implements INotificationRepository {
   @override
   Future<void> markAllAsRead() async {
     try {
-      await _apiClient.dio.post('/notifications/mark-all-read');
+      await _apiClient.dio.patch('/notifications/my/read-all');
     } on DioException catch (e) {
       throw e.error ?? ApiException(message: 'فشل في تحديث التنبيهات');
     }
