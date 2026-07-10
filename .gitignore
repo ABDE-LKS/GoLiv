@@ -82,7 +82,7 @@ Desktop.ini
 *.temp
 
 # Uploads (if any)
-uploads/
+backend/uploads/
 
 # macOS
 .AppleDouble
